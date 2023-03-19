@@ -19,3 +19,4 @@ keywords: cloud service
   - [Figma 在线 UX 设计](https://www.figma.com/)
   - [huggingface AI 模型和数据](https://huggingface.co/)
   - [kaggle 数据集 和 AI 算法](https://www.kaggle.com/)
+  - [Postgres 数据库](https://supabase.com/)
