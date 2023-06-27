@@ -61,6 +61,8 @@ useful commands
 
 ## MacOS
 
+[[Setup Mac]]
+
 ## ubuntu
 
 ## Backend service
