@@ -6,7 +6,7 @@
 
 ## Getting started
 
-- OS and commands [[OS-basic]]
+- OS and commands [OS-basic]
 - Database [[database]]
 - Cloud Service [[cloud-service]]
 - Coding [[dev-index]]
