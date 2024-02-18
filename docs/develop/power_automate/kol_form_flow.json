@@ -1,0 +1,1031 @@
+{
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "$connections": {
+            "defaultValue": {},
+            "type": "Object"
+        },
+        "$authentication": {
+            "defaultValue": {},
+            "type": "SecureObject"
+        }
+    },
+    "triggers": {
+        "提交新回复时": {
+            "splitOn": "@triggerOutputs()?['body/value']",
+            "metadata": {
+                "operationMetadataId": "dad3b10f-878a-4ac7-a842-98115101fc09"
+            },
+            "type": "OpenApiConnectionWebhook",
+            "inputs": {
+                "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_microsoftforms",
+                    "connectionName": "shared_microsoftforms",
+                    "operationId": "CreateFormWebhook"
+                },
+                "parameters": {
+                    "form_id": "OlTArnPMpE-eKs9Srfm3iPJ4_fg_DedFivsF2H1_8OJUMUo2UDJEUzJNUUNETzZVQ1NVVDVENkIyRiQlQCN0PWcu"
+                },
+                "authentication": "@parameters('$authentication')"
+            }
+        }
+    },
+    "actions": {
+        "获取回复详细信息": {
+            "runAfter": {
+                "Initialize_atth": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "b5dad919-47d9-4929-9b79-774be8869fd1"
+            },
+            "type": "OpenApiConnection",
+            "inputs": {
+                "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_microsoftforms",
+                    "connectionName": "shared_microsoftforms",
+                    "operationId": "GetFormResponseById"
+                },
+                "parameters": {
+                    "form_id": "OlTArnPMpE-eKs9Srfm3iPJ4_fg_DedFivsF2H1_8OJUMUo2UDJEUzJNUUNETzZVQ1NVVDVENkIyRiQlQCN0PWcu",
+                    "response_id": "@triggerOutputs()?['body/resourceData/responseId']"
+                },
+                "authentication": "@parameters('$authentication')"
+            }
+        },
+        "等待审批": {
+            "runAfter": {
+                "创建审批": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "e379fbe2-4752-4401-8411-1a48f63374ee"
+            },
+            "type": "OpenApiConnectionWebhook",
+            "inputs": {
+                "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                    "connectionName": "shared_approvals",
+                    "operationId": "WaitForAnApproval"
+                },
+                "parameters": {
+                    "approvalName": "@outputs('创建审批')?['body/name']"
+                },
+                "authentication": "@parameters('$authentication')"
+            }
+        },
+        "approve_result": {
+            "actions": {
+                "Create_item": {
+                    "runAfter": {},
+                    "metadata": {
+                        "operationMetadataId": "533be076-e120-4edb-a59b-e271ff2f9a65"
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                        "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                            "connectionName": "shared_sharepointonline",
+                            "operationId": "PostItem"
+                        },
+                        "parameters": {
+                            "dataset": "https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China",
+                            "table": "2ceb2b5f-a9a7-4cbc-bbca-799757c419a6",
+                            "item/Title": "@concat(outputs('获取回复详细信息')?['body/r5f54d97dc05d4ef09f656ac331c6e921'],outputs('获取回复详细信息')?['body/r86178b8fdaaf4c46803738b902363f89'],outputs('获取回复详细信息')?['body/r82eea938168d4273bcc8dc5cff34496f'])",
+                            "item/Name": "@outputs('获取回复详细信息')?['body/r86178b8fdaaf4c46803738b902363f89']",
+                            "item/field_1": "@outputs('获取回复详细信息')?['body/r82eea938168d4273bcc8dc5cff34496f']",
+                            "item/field_2": "@outputs('获取回复详细信息')?['body/r5f54d97dc05d4ef09f656ac331c6e921']",
+                            "item/field_4": "@outputs('获取回复详细信息')?['body/r644ddfca0f7848d7a20a0fbe76c8931f']",
+                            "item/field_5": "@outputs('获取回复详细信息')?['body/r22a0ed1f4a0e442d9276fec2b3930084']",
+                            "item/field_6": "@outputs('获取回复详细信息')?['body/rd69e5570be264b749441d907c91f168d']",
+                            "item/field_7": "@{outputs('获取回复详细信息')?['body/re6e59e1ea0c3489aa9007875a5eac646']}：@{outputs('获取回复详细信息')?['body/r0c3b1a0f8db041a99ea520818d25475f']}",
+                            "item/field_8": "@outputs('获取回复详细信息')?['body/r57b6216499b3496da239430430aa073f']",
+                            "item/field_10": "@variables('RankOverall')",
+                            "item/field_11": "Approved",
+                            "item/field_13": "@outputs('获取回复详细信息')?['body/responder']",
+                            "item/CreatedOn": "@convertFromUtc(utcNow(),'China Standard Time')"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                    }
+                },
+                "Apply_to_each_2": {
+                    "foreach": "@outputs('创建审批')?['body/approvers']",
+                    "actions": {
+                        "Send_an_email_(V2)": {
+                            "runAfter": {},
+                            "metadata": {
+                                "operationMetadataId": "90c6b0a4-94da-4266-8f6f-33f8b492cc24"
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "connectionName": "shared_office365",
+                                    "operationId": "SendEmailV2"
+                                },
+                                "parameters": {
+                                    "emailMessage/To": "@outputs('获取回复详细信息')?['body/responder']",
+                                    "emailMessage/Subject": "KOL Application for @{outputs('Create_item')?['body/Name']} approved",
+                                    "emailMessage/Body": "<p>@{outputs('Create_item')?['body/Name']}, &nbsp;@{outputs('Create_item')?['body/field_1']} &nbsp;is approved as @{variables('RankOverall')} KOL<br>\n<br>\nApproved by @{items('Apply_to_each_2')?['displayName']}<br>\n<br>\n@{outputs('等待审批')?['body/details']}<br>\n<br>\n@{outputs('等待审批')?['body/responseSummary']}<br>\n</p>",
+                                    "emailMessage/Importance": "Normal"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                            }
+                        }
+                    },
+                    "runAfter": {
+                        "Apply_to_each_4": [
+                            "Succeeded"
+                        ]
+                    },
+                    "metadata": {
+                        "operationMetadataId": "9257c7ba-0f52-4694-aa65-6626b0e531a8"
+                    },
+                    "type": "Foreach"
+                },
+                "Apply_to_each_4": {
+                    "foreach": "@body('Parse_JSON')",
+                    "actions": {
+                        "Add_attachment": {
+                            "runAfter": {
+                                "Get_file_content": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "metadata": {
+                                "operationMetadataId": "1a7c1dc2-718a-47ad-bf43-72712610555d"
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                    "connectionName": "shared_sharepointonline",
+                                    "operationId": "CreateAttachment"
+                                },
+                                "parameters": {
+                                    "dataset": "https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China",
+                                    "table": "2ceb2b5f-a9a7-4cbc-bbca-799757c419a6",
+                                    "itemId": "@outputs('Create_item')?['body/ID']",
+                                    "displayName": "@items('Apply_to_each_4')['name']",
+                                    "body": "@body('Get_file_content')"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                            }
+                        },
+                        "Get_file_content": {
+                            "runAfter": {},
+                            "metadata": {
+                                "operationMetadataId": "95c2b33e-a8ae-44e2-99e8-e14b4a242124"
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                                    "connectionName": "shared_onedriveforbusiness_1",
+                                    "operationId": "GetFileContent"
+                                },
+                                "parameters": {
+                                    "id": "@items('Apply_to_each_4')['id']",
+                                    "inferContentType": true
+                                },
+                                "authentication": "@parameters('$authentication')"
+                            }
+                        }
+                    },
+                    "runAfter": {
+                        "Create_item": [
+                            "Succeeded"
+                        ]
+                    },
+                    "metadata": {
+                        "operationMetadataId": "ed8125e1-ad15-4f6a-9fed-1a25c7b82146"
+                    },
+                    "type": "Foreach"
+                }
+            },
+            "runAfter": {
+                "等待审批": [
+                    "Succeeded"
+                ]
+            },
+            "else": {
+                "actions": {
+                    "Apply_to_each": {
+                        "foreach": "@outputs('等待审批')?['body/responses']",
+                        "actions": {
+                            "Apply_to_each_3": {
+                                "foreach": "@outputs('Get_existing_KOL_with_same_name')?['body/value']",
+                                "actions": {
+                                    "Send_an_email_(V2)_2": {
+                                        "runAfter": {},
+                                        "metadata": {
+                                            "operationMetadataId": "25a8d794-6897-4c11-85c3-1b5a6baf893d"
+                                        },
+                                        "type": "OpenApiConnection",
+                                        "inputs": {
+                                            "host": {
+                                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                "connectionName": "shared_office365",
+                                                "operationId": "SendEmailV2"
+                                            },
+                                            "parameters": {
+                                                "emailMessage/To": "@outputs('获取回复详细信息')?['body/responder']",
+                                                "emailMessage/Subject": "KOL  @{items('Apply_to_each_3')?['Name']} application not approved",
+                                                "emailMessage/Body": "<p>@{outputs('等待审批')?['body/details']} &nbsp;Not Approved<br>\n<br>\n@{items('Apply_to_each')?['approverResponse']}</p>",
+                                                "emailMessage/Importance": "Normal"
+                                            },
+                                            "authentication": "@parameters('$authentication')"
+                                        }
+                                    }
+                                },
+                                "runAfter": {},
+                                "metadata": {
+                                    "operationMetadataId": "89d8cd1b-f256-46fd-ba0b-d16ada59156c"
+                                },
+                                "type": "Foreach"
+                            }
+                        },
+                        "runAfter": {},
+                        "metadata": {
+                            "operationMetadataId": "2a936f5d-35a4-4898-b43d-e940adceab76"
+                        },
+                        "type": "Foreach"
+                    }
+                }
+            },
+            "expression": {
+                "equals": [
+                    "@outputs('等待审批')?['body/outcome']",
+                    "Approve"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "7c75af98-95f1-4dce-833a-08a211cd0b48"
+            },
+            "type": "If"
+        },
+        "Initialize_variable": {
+            "runAfter": {},
+            "metadata": {
+                "operationMetadataId": "bc10d5cf-9dc2-4734-a935-7801591d3c27"
+            },
+            "type": "InitializeVariable",
+            "inputs": {
+                "variables": [
+                    {
+                        "name": "ranks",
+                        "type": "array",
+                        "value": [
+                            {
+                                "Category": "JobTitle",
+                                "Value": "主任医师，主任技师，教授等",
+                                "Score": 4
+                            },
+                            {
+                                "Category": "JobTitle",
+                                "Value": "副主任医师，副主任技师，副教授等",
+                                "Score": 3
+                            },
+                            {
+                                "Category": "JobTitle",
+                                "Value": "主治医师，主管技师，讲师等",
+                                "Score": 2
+                            },
+                            {
+                                "Category": "JobTitle",
+                                "Value": "住院医师，技师等",
+                                "Score": 1
+                            },
+                            {
+                                "Category": "Education",
+                                "Value": "博士",
+                                "Score": 4
+                            },
+                            {
+                                "Category": "Education",
+                                "Value": "硕士",
+                                "Score": 3
+                            },
+                            {
+                                "Category": "Education",
+                                "Value": "本科",
+                                "Score": 2
+                            },
+                            {
+                                "Category": "Education",
+                                "Value": "专科",
+                                "Score": 1
+                            },
+                            {
+                                "Category": "Work",
+                                "Value": "大于20年",
+                                "Score": 4
+                            },
+                            {
+                                "Category": "Work",
+                                "Value": "大于10年",
+                                "Score": 3
+                            },
+                            {
+                                "Category": "Work",
+                                "Value": "大于5年",
+                                "Score": 2
+                            },
+                            {
+                                "Category": "Work",
+                                "Value": "小于5年",
+                                "Score": 1
+                            },
+                            {
+                                "Category": "Associate",
+                                "Value": "国家级主委",
+                                "Score": 4
+                            },
+                            {
+                                "Category": "Associate",
+                                "Value": "国家级委员",
+                                "Score": 3
+                            },
+                            {
+                                "Category": "Associate",
+                                "Value": "省级主委",
+                                "Score": 2
+                            },
+                            {
+                                "Category": "Associate",
+                                "Value": "省级委员",
+                                "Score": 1
+                            },
+                            {
+                                "Category": "Associate",
+                                "Value": "无协会任职",
+                                "Score": 0
+                            },
+                            {
+                                "Category": "IntlPub",
+                                "Value": "无",
+                                "Score": 1
+                            },
+                            {
+                                "Category": "IntlPub",
+                                "Value": "国际期刊发表1篇或者国家级发表3篇",
+                                "Score": 2
+                            },
+                            {
+                                "Category": "IntlPub",
+                                "Value": "国际期刊发表3篇",
+                                "Score": 3
+                            },
+                            {
+                                "Category": "IntlPub",
+                                "Value": "国际期刊发表5篇及以上",
+                                "Score": 4
+                            },
+                            {
+                                "Category": "LocalPub",
+                                "Value": "无",
+                                "Score": 1
+                            },
+                            {
+                                "Category": "LocalPub",
+                                "Value": "小于3篇",
+                                "Score": 2
+                            },
+                            {
+                                "Category": "LocalPub",
+                                "Value": "3-5篇",
+                                "Score": 3
+                            },
+                            {
+                                "Category": "LocalPub",
+                                "Value": "大于5篇",
+                                "Score": 4
+                            },
+                            {
+                                "Category": "Level",
+                                "Value": "TOP KOL",
+                                "Score": 17
+                            },
+                            {
+                                "Category": "Level",
+                                "Value": "National KOL",
+                                "Score": 13
+                            },
+                            {
+                                "Category": "Level",
+                                "Value": "Regional KOL",
+                                "Score": 9
+                            },
+                            {
+                                "Category": "Level",
+                                "Value": "Local KOL",
+                                "Score": 4
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "Filter_array_Job": {
+            "runAfter": {
+                "获取回复详细信息": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "b09eaf03-0c1e-495f-9707-7b727ec7514e"
+            },
+            "type": "Query",
+            "inputs": {
+                "from": "@variables('ranks')",
+                "where": "@equals(item()['Value'], outputs('获取回复详细信息')?['body/r644ddfca0f7848d7a20a0fbe76c8931f'])"
+            }
+        },
+        "Select_Job": {
+            "runAfter": {
+                "Filter_publish_local": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "2c50eb87-accf-4b2f-a5b4-e9487e43aea1"
+            },
+            "type": "Select",
+            "inputs": {
+                "from": "@body('Filter_array_Job')",
+                "select": {
+                    "Score": "@item()?['Score']"
+                }
+            }
+        },
+        "jobScore": {
+            "runAfter": {
+                "Select_Job": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "a04e51dc-3c20-4638-90e5-c7ff1d7b9f70"
+            },
+            "type": "Compose",
+            "inputs": "@first(body('Select_Job'))?['Score']"
+        },
+        "Filter_education": {
+            "runAfter": {
+                "Filter_array_Job": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "57935597-0024-4507-82ed-814eb82d4f17"
+            },
+            "type": "Query",
+            "inputs": {
+                "from": "@variables('ranks')",
+                "where": "@equals(item()['Value'], outputs('获取回复详细信息')?['body/r22a0ed1f4a0e442d9276fec2b3930084'])"
+            }
+        },
+        "Filter_work": {
+            "runAfter": {
+                "Filter_education": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "2468a181-8f25-4fcd-b0d7-e33c1da1f946"
+            },
+            "type": "Query",
+            "inputs": {
+                "from": "@variables('ranks')",
+                "where": "@equals(item()['Value'], outputs('获取回复详细信息')?['body/rd69e5570be264b749441d907c91f168d'])"
+            }
+        },
+        "Filter_associate": {
+            "runAfter": {
+                "Filter_work": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "9f0206f8-7437-40fe-8b11-29640c5b41b0"
+            },
+            "type": "Query",
+            "inputs": {
+                "from": "@variables('ranks')",
+                "where": "@equals(item()['Value'], outputs('获取回复详细信息')?['body/r0c3b1a0f8db041a99ea520818d25475f'])"
+            }
+        },
+        "Filter_publish_intl": {
+            "runAfter": {
+                "Filter_associate": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "31452390-591d-4dab-97d6-0d4b42cd43bf"
+            },
+            "type": "Query",
+            "inputs": {
+                "from": "@variables('ranks')",
+                "where": "@equals(item()['Value'], outputs('获取回复详细信息')?['body/r57b6216499b3496da239430430aa073f'])"
+            }
+        },
+        "Filter_publish_local": {
+            "runAfter": {
+                "Filter_publish_intl": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "6634b2c3-4a7c-4f41-90af-9af5f449e6ff"
+            },
+            "type": "Query",
+            "inputs": {
+                "from": "@variables('ranks')",
+                "where": "@equals(item()['Value'], '')"
+            }
+        },
+        "ScoreEducation": {
+            "runAfter": {
+                "Select_Education": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "45d545b2-8a09-4b81-bf6e-cbd61f222b94"
+            },
+            "type": "Compose",
+            "inputs": "@first(body('Select_Education'))?['Score']"
+        },
+        "Select_Education": {
+            "runAfter": {
+                "jobScore": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "93bd4eef-f35e-4cd0-b9fe-4c8a63287f39"
+            },
+            "type": "Select",
+            "inputs": {
+                "from": "@body('Filter_education')",
+                "select": {
+                    "Score": "@item()?['Score']"
+                }
+            }
+        },
+        "Select_work": {
+            "runAfter": {
+                "ScoreEducation": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "ccacb34a-4e2c-4cf8-95b0-5293c0fcdd3d"
+            },
+            "type": "Select",
+            "inputs": {
+                "from": "@body('Filter_work')",
+                "select": {
+                    "Score": "@item()?['Score']"
+                }
+            }
+        },
+        "ScoreWork": {
+            "runAfter": {
+                "Select_work": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "01b1f254-c24d-42e8-bc6c-039bec1cceae"
+            },
+            "type": "Compose",
+            "inputs": "@first(body('Select_work'))?['Score']"
+        },
+        "Select_Associate": {
+            "runAfter": {
+                "ScoreWork": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "c4a10fc5-0edb-420d-9f4d-e2a5c3638980"
+            },
+            "type": "Select",
+            "inputs": {
+                "from": "@body('Filter_associate')",
+                "select": {
+                    "Score": "@item()?['Score']"
+                }
+            }
+        },
+        "ScoreAssociate": {
+            "runAfter": {
+                "Select_Associate": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "6872b14f-e8cf-4601-93af-a65c3419a752"
+            },
+            "type": "Compose",
+            "inputs": "@first(body('Select_Associate'))?['Score']"
+        },
+        "Select_pub_intl": {
+            "runAfter": {
+                "ScoreAssociate": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "9ecee154-cceb-4300-bfd3-c0685ac00a7f"
+            },
+            "type": "Select",
+            "inputs": {
+                "from": "@body('Filter_publish_intl')",
+                "select": {
+                    "Score": "@item()?['Score']"
+                }
+            }
+        },
+        "ScorePubIntl": {
+            "runAfter": {
+                "Select_pub_intl": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "0c530e1b-b533-4599-bc56-45375dc77567"
+            },
+            "type": "Compose",
+            "inputs": "@first(body('Select_pub_intl'))?['Score']"
+        },
+        "Score_Overall": {
+            "runAfter": {
+                "Score_max_2": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "403a349f-d2c4-4409-821b-4b40af19c088"
+            },
+            "type": "Compose",
+            "inputs": "@add(outputs('jobScore'),outputs('Score_max_2'))"
+        },
+        "max_edu_work": {
+            "runAfter": {
+                "ScorePubIntl": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "9daf5b87-f517-43c2-b06b-f89d1383cffe"
+            },
+            "type": "Compose",
+            "inputs": "@max(outputs('ScoreWork'),outputs('ScoreEducation'))"
+        },
+        "max_associate_pub": {
+            "runAfter": {
+                "max_edu_work": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "a0f11351-609e-4134-bfa8-6e1db4dd36e7"
+            },
+            "type": "Compose",
+            "inputs": "@max(outputs('ScoreAssociate'),outputs('ScorePubIntl'))"
+        },
+        "Score_max_2": {
+            "runAfter": {
+                "max_associate_pub": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "1fec817e-2da3-45d5-832b-ecefadea7697"
+            },
+            "type": "Compose",
+            "inputs": "@add(outputs('max_associate_pub'),outputs('max_edu_work'))"
+        },
+        "decide_rank": {
+            "actions": {
+                "Set_variable": {
+                    "runAfter": {},
+                    "metadata": {
+                        "operationMetadataId": "91bb1f2c-dafe-405d-994e-927632047332"
+                    },
+                    "type": "SetVariable",
+                    "inputs": {
+                        "name": "RankOverall",
+                        "value": "Top"
+                    }
+                }
+            },
+            "runAfter": {
+                "Create_attch_table": [
+                    "Succeeded"
+                ]
+            },
+            "else": {
+                "actions": {
+                    "Condition_3": {
+                        "actions": {
+                            "Set_variable_2": {
+                                "runAfter": {},
+                                "metadata": {
+                                    "operationMetadataId": "b0a2dd56-5a8b-4ee7-9b9e-e6212df41ac2"
+                                },
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "RankOverall",
+                                    "value": "National"
+                                }
+                            }
+                        },
+                        "runAfter": {},
+                        "else": {
+                            "actions": {
+                                "Condition_4": {
+                                    "actions": {
+                                        "Set_variable_3": {
+                                            "runAfter": {},
+                                            "metadata": {
+                                                "operationMetadataId": "4855b128-7c72-4f8d-8a49-a66f08e6c9f6"
+                                            },
+                                            "type": "SetVariable",
+                                            "inputs": {
+                                                "name": "RankOverall",
+                                                "value": "Regional"
+                                            }
+                                        }
+                                    },
+                                    "runAfter": {},
+                                    "else": {
+                                        "actions": {
+                                            "Set_variable_4": {
+                                                "runAfter": {},
+                                                "metadata": {
+                                                    "operationMetadataId": "6fc1d831-2e8c-4060-8480-c03d16d594a7"
+                                                },
+                                                "type": "SetVariable",
+                                                "inputs": {
+                                                    "name": "RankOverall",
+                                                    "value": "Local"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "expression": {
+                                        "greaterOrEquals": [
+                                            "@outputs('Score_Overall')",
+                                            6
+                                        ]
+                                    },
+                                    "metadata": {
+                                        "operationMetadataId": "3812719a-b01d-47f9-a10b-efca34f39583"
+                                    },
+                                    "type": "If"
+                                }
+                            }
+                        },
+                        "expression": {
+                            "greaterOrEquals": [
+                                "@outputs('Score_Overall')",
+                                9
+                            ]
+                        },
+                        "metadata": {
+                            "operationMetadataId": "67bd11d8-31eb-475b-93a8-962b390ad9fd"
+                        },
+                        "type": "If"
+                    }
+                }
+            },
+            "expression": {
+                "greaterOrEquals": [
+                    "@outputs('Score_Overall')",
+                    12
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "1ff66b94-8e43-45cc-8214-b6a25d8f2c43"
+            },
+            "type": "If"
+        },
+        "RankOverall": {
+            "runAfter": {
+                "Initialize_variable": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "32d63df4-3d1b-4783-a0e4-a8d0317aeec5"
+            },
+            "type": "InitializeVariable",
+            "inputs": {
+                "variables": [
+                    {
+                        "name": "RankOverall",
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "Get_existing_KOL_with_same_name": {
+            "runAfter": {
+                "decide_rank": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "c6782fc9-33c4-408d-bfe9-e56b127f4364"
+            },
+            "type": "OpenApiConnection",
+            "inputs": {
+                "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                    "connectionName": "shared_sharepointonline_1",
+                    "operationId": "GetItems"
+                },
+                "parameters": {
+                    "dataset": "https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China",
+                    "table": "2ceb2b5f-a9a7-4cbc-bbca-799757c419a6",
+                    "$filter": "Name eq '@{outputs('获取回复详细信息')?['body/r86178b8fdaaf4c46803738b902363f89']}'"
+                },
+                "authentication": "@parameters('$authentication')"
+            }
+        },
+        "Create_CSV_table": {
+            "runAfter": {
+                "Get_existing_KOL_with_same_name": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "34dec3a4-52fa-4b90-ab60-a89a96d4276b"
+            },
+            "type": "Table",
+            "inputs": {
+                "from": "@outputs('Get_existing_KOL_with_same_name')?['body/value']",
+                "format": "CSV",
+                "columns": [
+                    {
+                        "header": "姓名",
+                        "value": "@item()?['Name']"
+                    },
+                    {
+                        "header": "单位",
+                        "value": "@item()?['field_1']"
+                    },
+                    {
+                        "header": "申请日期",
+                        "value": "@item()?['CreatedOn']"
+                    }
+                ]
+            }
+        },
+        "Parse_JSON": {
+            "runAfter": {
+                "Score_Overall": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "941022ea-327d-4108-8c91-2b94ea790a54"
+            },
+            "type": "ParseJson",
+            "inputs": {
+                "content": "@outputs('获取回复详细信息')?['body/r50626923ef1d4700a4223cb2ab4b680f']",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "link": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "type": {},
+                            "size": {
+                                "type": "integer"
+                            },
+                            "referenceId": {
+                                "type": "string"
+                            },
+                            "driveId": {
+                                "type": "string"
+                            },
+                            "status": {
+                                "type": "integer"
+                            },
+                            "uploadSessionUrl": {}
+                        },
+                        "required": [
+                            "name",
+                            "link",
+                            "id",
+                            "type",
+                            "size",
+                            "referenceId",
+                            "driveId",
+                            "status",
+                            "uploadSessionUrl"
+                        ]
+                    }
+                }
+            }
+        },
+        "Compose_atth": {
+            "runAfter": {
+                "Parse_JSON": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "1fc47c6a-7fe1-45e6-8287-05dbfaaed929"
+            },
+            "type": "Compose",
+            "inputs": "@body('Parse_JSON')"
+        },
+        "Initialize_atth": {
+            "runAfter": {
+                "RankOverall": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "b0824646-ca1a-41a6-92f2-74235855d981"
+            },
+            "type": "InitializeVariable",
+            "inputs": {
+                "variables": [
+                    {
+                        "name": "atths",
+                        "type": "array",
+                        "value": []
+                    }
+                ]
+            }
+        },
+        "Create_attch_table": {
+            "runAfter": {
+                "Compose_atth": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "4dc44277-c50f-4138-8d9f-be37cdbee39b"
+            },
+            "type": "Table",
+            "inputs": {
+                "from": "@outputs('Compose_atth')",
+                "format": "CSV",
+                "columns": [
+                    {
+                        "header": "",
+                        "value": "@concat('[',item()?['name'],'](',item()?['link'],')')"
+                    }
+                ]
+            }
+        },
+        "创建审批": {
+            "runAfter": {
+                "Create_CSV_table": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "1555c599-1634-46be-9d20-ae866e9d0f72"
+            },
+            "type": "OpenApiConnection",
+            "inputs": {
+                "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                    "connectionName": "shared_approvals",
+                    "operationId": "CreateAnApproval"
+                },
+                "parameters": {
+                    "approvalType": "Basic",
+                    "ApprovalCreationInput/title": "New KOL  request by @{outputs('获取回复详细信息')?['body/responder']}",
+                    "ApprovalCreationInput/assignedTo": "daniel.jiang@ext.biomerieux.com;yvonne.xia@biomerieux.com;",
+                    "ApprovalCreationInput/details": "\nName： @{outputs('获取回复详细信息')?['body/r86178b8fdaaf4c46803738b902363f89']}\n单位：@{outputs('获取回复详细信息')?['body/r82eea938168d4273bcc8dc5cff34496f']}\nRegion: @{outputs('获取回复详细信息')?['body/r5f54d97dc05d4ef09f656ac331c6e921']}\n职称：@{outputs('获取回复详细信息')?['body/r644ddfca0f7848d7a20a0fbe76c8931f']}，Score: @{outputs('jobScore')}\n学历：@{outputs('获取回复详细信息')?['body/r22a0ed1f4a0e442d9276fec2b3930084']}，Score: @{outputs('ScoreEducation')}\n工作年限：@{outputs('获取回复详细信息')?['body/rd69e5570be264b749441d907c91f168d']}, Score: @{outputs('ScoreWork')}\n协会任职：@{outputs('获取回复详细信息')?['body/r0c3b1a0f8db041a99ea520818d25475f']}, Score: @{outputs('ScoreAssociate')}\n@{outputs('获取回复详细信息')?['body/re6e59e1ea0c3489aa9007875a5eac646']}\n国际期刊：@{outputs('获取回复详细信息')?['body/r57b6216499b3496da239430430aa073f']} , Score @{outputs('ScorePubIntl')}\n申请级别：  @{outputs('获取回复详细信息')?['body/rebc58e4514164fbca0d1140ba5b801e8']}\n\n---------------------------------------------\n\nscore: @{outputs('Score_Overall')}\nScored Rank: @{variables('RankOverall')}\n-------------------------------------------------------\n同名 KOL\n@{body('Create_CSV_table')}\n-------------------------------\n附件\n-----------------------------\n\n@{body('Create_attch_table')}\n------------------------------\n** 请根据实际情况更新 List 里的 KOL Level",
+                    "ApprovalCreationInput/requestor": "@{outputs('获取回复详细信息')?['body/responder']};",
+                    "ApprovalCreationInput/enableNotifications": true,
+                    "ApprovalCreationInput/enableReassignment": true
+                },
+                "authentication": "@parameters('$authentication')"
+            }
+        }
+    },
+    "description": "使用 CN_KOL 下的 Form 提交申请\nformId 为 OlTArnPMpE-eKs9Srfm3iPJ4_fg_DedFivsF2H1_8OJUMUo2UDJEUzJNUUNETzZVQ1NVVDVENkIyRiQlQCN0PWcu"
+}
