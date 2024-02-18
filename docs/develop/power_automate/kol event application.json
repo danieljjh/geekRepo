@@ -1,0 +1,1035 @@
+{
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "$connections": {
+            "defaultValue": {},
+            "type": "Object"
+        },
+        "$authentication": {
+            "defaultValue": {},
+            "type": "SecureObject"
+        },
+        "sharepoint.site": {
+            "defaultValue": "",
+            "type": "String"
+        },
+        "sharepoint.list": {
+            "defaultValue": "",
+            "type": "String"
+        }
+    },
+    "triggers": {
+        "When_a_new_item_is_created": {
+            "recurrence": {
+                "frequency": "Minute",
+                "interval": 1
+            },
+            "splitOn": "@triggerBody()?.value",
+            "metadata": {
+                "operationMetadataId": "221a713b-9c3b-40a4-9ae5-242d860bbb1f",
+                "flowSystemMetadata": {
+                    "swaggerOperationId": "GetOnNewItems"
+                }
+            },
+            "type": "ApiConnection",
+            "inputs": {
+                "host": {
+                    "connection": {
+                        "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                    }
+                },
+                "method": "get",
+                "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/onnewitems",
+                "authentication": "@parameters('$authentication')"
+            },
+            "conditions": []
+        }
+    },
+    "actions": {
+        "get_event_detail": {
+            "runAfter": {},
+            "metadata": {
+                "operationMetadataId": "33e0c381-46ee-43c2-83d2-d1330c66b94a",
+                "flowSystemMetadata": {
+                    "swaggerOperationId": "GetItem"
+                }
+            },
+            "type": "ApiConnection",
+            "inputs": {
+                "host": {
+                    "connection": {
+                        "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                    }
+                },
+                "method": "get",
+                "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/items/@{encodeURIComponent(triggerBody()?['ID'])}",
+                "authentication": "@parameters('$authentication')"
+            }
+        },
+        "Get_kol_info": {
+            "runAfter": {
+                "Get_manager_(V2)": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "b1296edf-7c6a-42ca-ac4a-074cfcbc0ae2",
+                "flowSystemMetadata": {
+                    "swaggerOperationId": "GetItem"
+                }
+            },
+            "type": "ApiConnection",
+            "inputs": {
+                "host": {
+                    "connection": {
+                        "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                    }
+                },
+                "method": "get",
+                "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('2ceb2b5f-a9a7-4cbc-bbca-799757c419a6'))}/items/@{encodeURIComponent(body('get_event_detail')?['KOL']?['Id'])}",
+                "authentication": "@parameters('$authentication')"
+            }
+        },
+        "RoleTypeValue": {
+            "runAfter": {
+                "Get_kol_info": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "348654f4-9c33-477a-b03c-65dc7b24b2fe"
+            },
+            "type": "Compose",
+            "inputs": "@body('get_event_detail')?['RoleTpe']?['Value']"
+        },
+        "Get_manager_(V2)": {
+            "runAfter": {
+                "Apply_to_each_attchments": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "46ff0567-dfe8-4e13-845c-4b0834a48c25",
+                "flowSystemMetadata": {
+                    "swaggerOperationId": "Manager_V2"
+                }
+            },
+            "type": "ApiConnection",
+            "inputs": {
+                "host": {
+                    "connection": {
+                        "name": "@parameters('$connections')['shared_office365users']['connectionId']"
+                    }
+                },
+                "method": "get",
+                "path": "/codeless/v1.0/users/@{encodeURIComponent(body('get_event_detail')?['Author']?['Email'])}/manager",
+                "authentication": "@parameters('$authentication')"
+            }
+        },
+        "check_KOL_region": {
+            "actions": {
+                "Get_cost_data": {
+                    "runAfter": {},
+                    "metadata": {
+                        "operationMetadataId": "980cf766-f3c7-4cd1-8c20-b3e5ec30d0fb",
+                        "flowSystemMetadata": {
+                            "swaggerOperationId": "GetItems"
+                        }
+                    },
+                    "type": "ApiConnection",
+                    "inputs": {
+                        "host": {
+                            "connection": {
+                                "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                            }
+                        },
+                        "method": "get",
+                        "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('bb4e5548-87dc-40b5-af77-de35eccd2233'))}/items",
+                        "queries": {
+                            "$filter": "Title eq '@{body('Get_kol_info')?['field_2']}' and EventRole eq '@{body('get_event_detail')?['RoleTpe']?['Value']}' and KOLRank eq '@{body('Get_kol_info')?['field_10']}'",
+                            "$top": 1
+                        },
+                        "authentication": "@parameters('$authentication')"
+                    }
+                },
+                "To_approve_CN_KOL": {
+                    "foreach": "@body('Get_cost_data')?['value']",
+                    "actions": {
+                        "Apply_to_each_CN_cost": {
+                            "foreach": "@body('Get_attachments')",
+                            "actions": {
+                                "manager_approval": {
+                                    "runAfter": {},
+                                    "limit": {
+                                        "timeout": "P2D"
+                                    },
+                                    "metadata": {
+                                        "operationMetadataId": "8e90cf1b-7f35-40b9-95e9-9dcca74c9111",
+                                        "flowSystemMetadata": {
+                                            "swaggerOperationId": "StartAndWaitForAnApproval"
+                                        }
+                                    },
+                                    "type": "ApiConnectionWebhook",
+                                    "inputs": {
+                                        "host": {
+                                            "connection": {
+                                                "name": "@parameters('$connections')['shared_approvals']['connectionId']"
+                                            }
+                                        },
+                                        "body": {
+                                            "notificationUrl": "@{listCallbackUrl()}",
+                                            "title": "Event @{body('get_event_detail')['Title']} KOL  wait for approval",
+                                            "assignedTo": "@{body('Get_manager_(V2)')?['mail']}; daniel.jiang@ext.biomerieux.com;",
+                                            "details": "\n#### Event :  @{body('get_event_detail')?['Title']}\n#### Event Description：  @{body('get_event_detail')?['field_6']}\n#### Date: @{body('get_event_detail')?['EventDate']}\n\n#### KOL: @{body('Get_kol_info')?['Name']} ,    @{body('Get_kol_info')?['field_1']}\n#### Region: @{body('Get_kol_info')?['field_2']}\n#### Role:  @{triggerBody()?['RoleTpe']?['Value']}\n#### Rank: @{items('To_approve_CN_KOL')?['KOLRank']?['Value']}\n#### KOL Approval Status: @{body('Get_kol_info')?['field_11']}, \n#### Approved Cost: : @{items('To_approve_CN_KOL')?['Cost']}  @{items('To_approve_CN_KOL')?['Currency']}\n#### Budget: @{body('get_event_detail')?['field_5']} @{body('get_event_detail')?['Currency']}\n#### KOL Expense Limit: @{items('To_approve_CN_KOL')?['Cost']} @{items('To_approve_CN_KOL')?['Currency']}\n#### @{variables('costValidate')}\n-----------------------------------------------\n",
+                                            "requestor": ";@{triggerBody()?['Author']?['Email']};",
+                                            "enableNotifications": true,
+                                            "enableReassignment": true,
+                                            "attachments": "@variables('attach')"
+                                        },
+                                        "path": "/types/@{encodeURIComponent('Basic')}/subscriptions",
+                                        "authentication": "@parameters('$authentication')"
+                                    }
+                                },
+                                "Condition_manager_approval_result": {
+                                    "actions": {
+                                        "CN_KOL_zoe_approval": {
+                                            "foreach": "@body('manager_approval')?['responses']",
+                                            "actions": {
+                                                "Start_and_wait_for_an_approval_zoe_CN_KOL": {
+                                                    "runAfter": {},
+                                                    "limit": {
+                                                        "timeout": "P2D"
+                                                    },
+                                                    "metadata": {
+                                                        "operationMetadataId": "d0e5e976-159d-49e1-90f3-aa7cfa97e1e0",
+                                                        "flowSystemMetadata": {
+                                                            "swaggerOperationId": "StartAndWaitForAnApproval"
+                                                        }
+                                                    },
+                                                    "type": "ApiConnectionWebhook",
+                                                    "inputs": {
+                                                        "host": {
+                                                            "connection": {
+                                                                "name": "@parameters('$connections')['shared_approvals']['connectionId']"
+                                                            }
+                                                        },
+                                                        "body": {
+                                                            "notificationUrl": "@{listCallbackUrl()}",
+                                                            "title": "KOL Event to be approved ",
+                                                            "assignedTo": "zoe.yi@biomerieux.com",
+                                                            "details": "\n@{body('manager_approval')?['details']}\n\n@{body('manager_approval')?['responseSummary']}\n\n#### Request By： @{triggerBody()?['field_8']}， @{triggerBody()?['Author']?['Email']}\n#### last approved by:  @{items('CN_KOL_zoe_approval')?['responder']?['displayName']}  (@{items('CN_KOL_zoe_approval')?['responder']?['email']})\n\n",
+                                                            "requestor": "@{triggerBody()?['Author']?['Email']};;",
+                                                            "enableNotifications": true,
+                                                            "enableReassignment": true,
+                                                            "attachments": "@variables('attach')"
+                                                        },
+                                                        "path": "/types/@{encodeURIComponent('BasicAwaitAll')}/subscriptions",
+                                                        "authentication": "@parameters('$authentication')"
+                                                    }
+                                                },
+                                                "Condition_zoe_approve_result_of_CN_KOL": {
+                                                    "actions": {
+                                                        "Create_approved_CN_KOL_Event": {
+                                                            "runAfter": {},
+                                                            "metadata": {
+                                                                "operationMetadataId": "5f6bef62-105e-4578-b14d-45e810ee93da",
+                                                                "flowSystemMetadata": {
+                                                                    "swaggerOperationId": "PostItem"
+                                                                }
+                                                            },
+                                                            "type": "ApiConnection",
+                                                            "inputs": {
+                                                                "host": {
+                                                                    "connection": {
+                                                                        "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                                    }
+                                                                },
+                                                                "method": "post",
+                                                                "body": {
+                                                                    "Title": "@body('get_event_detail')['Title']",
+                                                                    "field_6": "@body('get_event_detail')?['field_6']",
+                                                                    "EventDate": "@body('get_event_detail')?['EventDate']",
+                                                                    "KOL": {
+                                                                        "Id": "@body('get_event_detail')?['KOL']?['Id']"
+                                                                    },
+                                                                    "KOLName": "@body('Get_kol_info')?['Name']",
+                                                                    "KOLOrganization": "@body('Get_kol_info')?['field_1']",
+                                                                    "RoleTpe": {
+                                                                        "Value": "@body('get_event_detail')?['RoleTpe']?['Value']"
+                                                                    },
+                                                                    "field_4": "@body('Get_kol_info')?['field_10']",
+                                                                    "field_5": "@body('get_event_detail')?['field_5']",
+                                                                    "Currency": "@body('get_event_detail')?['Currency']",
+                                                                    "field_7": "Approved",
+                                                                    "field_8": "@{triggerBody()?['Author']}",
+                                                                    "field_9": "@triggerBody()?['Created']"
+                                                                },
+                                                                "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('0d0b6a51-ce86-49f9-8e8f-ed9172adf60e'))}/items",
+                                                                "authentication": "@parameters('$authentication')"
+                                                            }
+                                                        },
+                                                        "Get_attachments_2": {
+                                                            "runAfter": {
+                                                                "Create_approved_CN_KOL_Event": [
+                                                                    "Succeeded"
+                                                                ]
+                                                            },
+                                                            "metadata": {
+                                                                "operationMetadataId": "f27f48c8-8d50-40ad-b587-512f02fb04b5",
+                                                                "flowSystemMetadata": {
+                                                                    "swaggerOperationId": "GetItemAttachments"
+                                                                }
+                                                            },
+                                                            "type": "ApiConnection",
+                                                            "inputs": {
+                                                                "host": {
+                                                                    "connection": {
+                                                                        "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                                    }
+                                                                },
+                                                                "method": "get",
+                                                                "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/items/@{encodeURIComponent(encodeURIComponent(body('get_event_detail')?['ID']))}/attachments",
+                                                                "authentication": "@parameters('$authentication')"
+                                                            }
+                                                        },
+                                                        "Apply_to_each_2": {
+                                                            "foreach": "@body('Get_attachments_2')",
+                                                            "actions": {
+                                                                "Get_attachment_content_2": {
+                                                                    "runAfter": {},
+                                                                    "metadata": {
+                                                                        "operationMetadataId": "46c80535-0c56-41b0-8e8b-10b300b7ba55",
+                                                                        "flowSystemMetadata": {
+                                                                            "swaggerOperationId": "GetAttachmentContent"
+                                                                        }
+                                                                    },
+                                                                    "type": "ApiConnection",
+                                                                    "inputs": {
+                                                                        "host": {
+                                                                            "connection": {
+                                                                                "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                                            }
+                                                                        },
+                                                                        "method": "get",
+                                                                        "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/items/@{encodeURIComponent(encodeURIComponent(body('get_event_detail')?['ID']))}/attachments/@{encodeURIComponent(items('Apply_to_each_2')?['Id'])}/$value",
+                                                                        "authentication": "@parameters('$authentication')"
+                                                                    }
+                                                                },
+                                                                "Add_attachment": {
+                                                                    "runAfter": {
+                                                                        "Get_attachment_content_2": [
+                                                                            "Succeeded"
+                                                                        ]
+                                                                    },
+                                                                    "metadata": {
+                                                                        "operationMetadataId": "e0b3daf9-0f19-49f5-b712-46d214db95f3",
+                                                                        "flowSystemMetadata": {
+                                                                            "swaggerOperationId": "CreateAttachment"
+                                                                        }
+                                                                    },
+                                                                    "type": "ApiConnection",
+                                                                    "inputs": {
+                                                                        "host": {
+                                                                            "connection": {
+                                                                                "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                                            }
+                                                                        },
+                                                                        "method": "post",
+                                                                        "body": "@body('Get_attachment_content_2')?['$content']",
+                                                                        "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('0d0b6a51-ce86-49f9-8e8f-ed9172adf60e'))}/items/@{encodeURIComponent(encodeURIComponent(body('Create_approved_CN_KOL_Event')?['ID']))}/attachments",
+                                                                        "queries": {
+                                                                            "displayName": "@items('Apply_to_each_2')?['DisplayName']"
+                                                                        },
+                                                                        "authentication": "@parameters('$authentication')"
+                                                                    }
+                                                                }
+                                                            },
+                                                            "runAfter": {
+                                                                "Get_attachments_2": [
+                                                                    "Succeeded"
+                                                                ]
+                                                            },
+                                                            "metadata": {
+                                                                "operationMetadataId": "570a7217-b232-405a-ad4e-991a30a4bc70"
+                                                            },
+                                                            "type": "Foreach"
+                                                        }
+                                                    },
+                                                    "runAfter": {
+                                                        "Start_and_wait_for_an_approval_zoe_CN_KOL": [
+                                                            "Succeeded"
+                                                        ]
+                                                    },
+                                                    "else": {
+                                                        "actions": {
+                                                            "Update_item_2": {
+                                                                "runAfter": {},
+                                                                "metadata": {
+                                                                    "operationMetadataId": "228133a7-3d42-4a74-a8d3-9f2753009d3f",
+                                                                    "flowSystemMetadata": {
+                                                                        "swaggerOperationId": "PatchItem"
+                                                                    }
+                                                                },
+                                                                "type": "ApiConnection",
+                                                                "inputs": {
+                                                                    "host": {
+                                                                        "connection": {
+                                                                            "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                                        }
+                                                                    },
+                                                                    "method": "patch",
+                                                                    "body": {
+                                                                        "Title": "@body('get_event_detail')['Title']",
+                                                                        "field_5": "@body('get_event_detail')['field_5']",
+                                                                        "Currency": "@body('get_event_detail')['Currency']",
+                                                                        "field_7": "Rejected Final"
+                                                                    },
+                                                                    "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/items/@{encodeURIComponent(body('get_event_detail')?['ID'])}",
+                                                                    "authentication": "@parameters('$authentication')"
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "expression": {
+                                                        "equals": [
+                                                            "",
+                                                            "Approve"
+                                                        ]
+                                                    },
+                                                    "metadata": {
+                                                        "operationMetadataId": "80560bd7-70d4-450b-a3ad-78164ad22a6b"
+                                                    },
+                                                    "type": "If"
+                                                }
+                                            },
+                                            "runAfter": {},
+                                            "metadata": {
+                                                "operationMetadataId": "a238ad6f-d178-4ae0-94a2-593c6d5dc7e5"
+                                            },
+                                            "type": "Foreach"
+                                        }
+                                    },
+                                    "runAfter": {
+                                        "manager_approval": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "else": {
+                                        "actions": {
+                                            "Update_item_3": {
+                                                "runAfter": {},
+                                                "metadata": {
+                                                    "operationMetadataId": "5cb5bf9a-026f-4d7f-a1e6-56e8110d4311",
+                                                    "flowSystemMetadata": {
+                                                        "swaggerOperationId": "PatchItem"
+                                                    }
+                                                },
+                                                "type": "ApiConnection",
+                                                "inputs": {
+                                                    "host": {
+                                                        "connection": {
+                                                            "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                        }
+                                                    },
+                                                    "method": "patch",
+                                                    "body": {
+                                                        "Title": "@body('get_event_detail')['Title']",
+                                                        "field_5": "@body('get_event_detail')['field_5']",
+                                                        "Currency": "@body('get_event_detail')['Currency']",
+                                                        "field_7": "Rejected by Manager"
+                                                    },
+                                                    "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/items/@{encodeURIComponent(triggerBody()?['ID'])}",
+                                                    "authentication": "@parameters('$authentication')"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "expression": {
+                                        "equals": [
+                                            "@body('manager_approval')?['outcome']",
+                                            "Approve"
+                                        ]
+                                    },
+                                    "metadata": {
+                                        "operationMetadataId": "54609211-c97a-4364-9b81-7ca191a32ae6"
+                                    },
+                                    "type": "If"
+                                }
+                            },
+                            "runAfter": {},
+                            "metadata": {
+                                "operationMetadataId": "7e2191fc-5790-4c53-8b02-5d87f0e78845"
+                            },
+                            "type": "Foreach"
+                        }
+                    },
+                    "runAfter": {
+                        "Apply_to_each_cost_data": [
+                            "Succeeded"
+                        ]
+                    },
+                    "metadata": {
+                        "operationMetadataId": "de518c2e-c4f8-4a71-9cab-96725157584b"
+                    },
+                    "type": "Foreach"
+                },
+                "Apply_to_each_cost_data": {
+                    "foreach": "@body('Get_cost_data')?['value']",
+                    "actions": {
+                        "Condition": {
+                            "actions": {
+                                "Set_variable": {
+                                    "runAfter": {},
+                                    "metadata": {
+                                        "operationMetadataId": "2d2e8f77-22f1-4602-8a8c-8c8bc322c162"
+                                    },
+                                    "type": "SetVariable",
+                                    "inputs": {
+                                        "name": "costValidate",
+                                        "value": "!!! Cost exceed the KOL expense limit"
+                                    }
+                                }
+                            },
+                            "runAfter": {},
+                            "expression": {
+                                "greater": [
+                                    "@triggerBody()?['field_5']",
+                                    "@items('Apply_to_each_cost_data')?['Cost']"
+                                ]
+                            },
+                            "metadata": {
+                                "operationMetadataId": "f51bfe71-8095-4007-9e53-9415cec06bc6"
+                            },
+                            "type": "If"
+                        }
+                    },
+                    "runAfter": {
+                        "Get_cost_data": [
+                            "Succeeded"
+                        ]
+                    },
+                    "metadata": {
+                        "operationMetadataId": "28539d31-9f29-4d59-8cfe-3e2d765ca325"
+                    },
+                    "type": "Foreach"
+                }
+            },
+            "runAfter": {
+                "RoleTypeValue": [
+                    "Succeeded"
+                ]
+            },
+            "else": {
+                "actions": {
+                    "get_none_CN_cost": {
+                        "runAfter": {},
+                        "metadata": {
+                            "operationMetadataId": "6f901324-7245-4c55-9881-2feced798597",
+                            "flowSystemMetadata": {
+                                "swaggerOperationId": "GetItems"
+                            }
+                        },
+                        "type": "ApiConnection",
+                        "inputs": {
+                            "host": {
+                                "connection": {
+                                    "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                }
+                            },
+                            "method": "get",
+                            "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('bb4e5548-87dc-40b5-af77-de35eccd2233'))}/items",
+                            "queries": {
+                                "$filter": "Title eq '@{body('Get_kol_info')?['field_2']}'  and EventRole eq '@{body('get_event_detail')?['RoleTpe']?['Value']}'",
+                                "$top": 1
+                            },
+                            "authentication": "@parameters('$authentication')"
+                        }
+                    },
+                    "Apply_to_None_cn_kol_cost": {
+                        "foreach": "@body('get_none_CN_cost')?['value']",
+                        "actions": {
+                            "Condition_4": {
+                                "actions": {
+                                    "Set_variable_2": {
+                                        "runAfter": {},
+                                        "metadata": {
+                                            "operationMetadataId": "ca66c061-b667-4507-9e70-942640b08d85"
+                                        },
+                                        "type": "SetVariable",
+                                        "inputs": {
+                                            "name": "costValidate",
+                                            "value": "!!! Cost exceed the KOL expense limit"
+                                        }
+                                    }
+                                },
+                                "runAfter": {},
+                                "expression": {
+                                    "greater": [
+                                        "@body('get_event_detail')?['field_5']",
+                                        "@items('Apply_to_None_cn_kol_cost')?['Cost']"
+                                    ]
+                                },
+                                "metadata": {
+                                    "operationMetadataId": "4673dc13-bdbe-43da-910f-8155307f7c14"
+                                },
+                                "type": "If"
+                            }
+                        },
+                        "runAfter": {
+                            "get_none_CN_cost": [
+                                "Succeeded"
+                            ]
+                        },
+                        "metadata": {
+                            "operationMetadataId": "a1f2269f-4873-4307-b8e1-cc9371d608c3"
+                        },
+                        "type": "Foreach"
+                    },
+                    "Apply_to_each_None_CN_KOL": {
+                        "foreach": "@body('get_none_CN_cost')?['value']",
+                        "actions": {
+                            "Apply_to_each": {
+                                "foreach": "@body('Get_attachments')",
+                                "actions": {
+                                    "manager_approval_for_NonCN": {
+                                        "runAfter": {},
+                                        "metadata": {
+                                            "operationMetadataId": "9d72a078-952a-4b3b-9fc8-2ac6397dce83",
+                                            "flowSystemMetadata": {
+                                                "swaggerOperationId": "StartAndWaitForAnApproval"
+                                            }
+                                        },
+                                        "type": "ApiConnectionWebhook",
+                                        "inputs": {
+                                            "host": {
+                                                "connection": {
+                                                    "name": "@parameters('$connections')['shared_approvals']['connectionId']"
+                                                }
+                                            },
+                                            "body": {
+                                                "notificationUrl": "@{listCallbackUrl()}",
+                                                "title": " Event @{body('get_event_detail')['Title']}   Wait for Approval ",
+                                                "assignedTo": "@{body('Get_manager_(V2)')?['mail']}; daniel.jiang@ext.biomerieux.com;;",
+                                                "details": " #### Event : @{triggerBody()?['Title']}\n#### Event Description:  @{triggerBody()?['field_6']}\n#### Date:  @{triggerBody()?['EventDate']}\n\n#### KOL:  @{body('Get_kol_info')?['Title']}, @{body('Get_kol_info')?['field_1']}\n#### Region: @{body('Get_kol_info')?['field_2']}\n#### Role: @{body('get_event_detail')?['RoleTpe']?['Value']}\n#### Rank: @{body('Get_kol_info')?['field_10']}\n#### KOL Approval Status: @{body('Get_kol_info')?['field_11']} \n#### Budget: @{triggerBody()?['field_5']}   @{body('get_event_detail')?['Currency']}\n#### KOL Expense Limit: :   @{items('Apply_to_each_None_CN_KOL')?['Cost']} @{items('Apply_to_each_None_CN_KOL')?['Currency']}\n#### @{variables('costValidate')}\n-------------------------------------------------\n",
+                                                "requestor": "@{body('get_event_detail')?['Author']?['Email']};",
+                                                "enableNotifications": true,
+                                                "enableReassignment": true,
+                                                "attachments": "@variables('attach')"
+                                            },
+                                            "path": "/types/@{encodeURIComponent('Basic')}/subscriptions",
+                                            "authentication": "@parameters('$authentication')"
+                                        }
+                                    },
+                                    "NoneCN_manager_approval_result": {
+                                        "actions": {
+                                            "Apply_to_NonCN_for_zoe_approval": {
+                                                "foreach": "@body('manager_approval_for_NonCN')?['responses']",
+                                                "actions": {
+                                                    "Start_and_wait_for_an_approval_multiple_NonCN": {
+                                                        "runAfter": {},
+                                                        "metadata": {
+                                                            "operationMetadataId": "46913eeb-e480-4bde-9894-1dc6b3403e19",
+                                                            "flowSystemMetadata": {
+                                                                "swaggerOperationId": "StartAndWaitForAnApproval"
+                                                            }
+                                                        },
+                                                        "type": "ApiConnectionWebhook",
+                                                        "inputs": {
+                                                            "host": {
+                                                                "connection": {
+                                                                    "name": "@parameters('$connections')['shared_approvals']['connectionId']"
+                                                                }
+                                                            },
+                                                            "body": {
+                                                                "notificationUrl": "@{listCallbackUrl()}",
+                                                                "title": "KOL Event to be approved",
+                                                                "assignedTo": "zoe.yi@biomerieux.com;daniel.jiang@ext.biomerieux.com;",
+                                                                "details": "\n@{body('manager_approval_for_NonCN')?['details']}\n@{body('manager_approval_for_NonCN')?['responseSummary']}\n@{items('Apply_to_NonCN_for_zoe_approval')?['comments']}\n--------------------------------------------------------------------------\nKOL created on : @{body('Get_kol_info')?['CreatedOn']}\nKOL is approved by  yvonne.xia@biomerieux.com",
+                                                                "requestor": ";@{triggerBody()?['Author']?['Email']};",
+                                                                "enableNotifications": true,
+                                                                "enableReassignment": true,
+                                                                "attachments": "@variables('attach')"
+                                                            },
+                                                            "path": "/types/@{encodeURIComponent('BasicAwaitAll')}/subscriptions",
+                                                            "authentication": "@parameters('$authentication')"
+                                                        }
+                                                    },
+                                                    "NonCN_Final_approval_result": {
+                                                        "actions": {
+                                                            "Create_item_for_NonCN_KOL_Event": {
+                                                                "runAfter": {},
+                                                                "metadata": {
+                                                                    "operationMetadataId": "15fc1855-d79c-49c1-bdc4-9d705c6a7686",
+                                                                    "flowSystemMetadata": {
+                                                                        "swaggerOperationId": "PostItem"
+                                                                    }
+                                                                },
+                                                                "type": "ApiConnection",
+                                                                "inputs": {
+                                                                    "host": {
+                                                                        "connection": {
+                                                                            "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                                        }
+                                                                    },
+                                                                    "method": "post",
+                                                                    "body": {
+                                                                        "Title": "@triggerBody()?['Title']",
+                                                                        "field_6": "@triggerBody()?['field_6']",
+                                                                        "EventDate": "@body('get_event_detail')?['EventDate']",
+                                                                        "KOL": {
+                                                                            "Id": "@body('get_event_detail')?['KOL']?['Id']"
+                                                                        },
+                                                                        "KOLName": "@body('Get_kol_info')?['Name']",
+                                                                        "KOLOrganization": "@body('Get_kol_info')?['field_1']",
+                                                                        "RoleTpe": {
+                                                                            "Value": "@triggerBody()?['RoleTpe']?['Value']"
+                                                                        },
+                                                                        "field_4": "@body('Get_kol_info')?['field_10']",
+                                                                        "field_5": "@triggerBody()?['field_5']",
+                                                                        "Currency": "@items('Apply_to_each_None_CN_KOL')?['Currency']",
+                                                                        "field_7": "Approved",
+                                                                        "field_8": "@{triggerBody()?['Author']}",
+                                                                        "field_9": "@triggerBody()?['Created']"
+                                                                    },
+                                                                    "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('0d0b6a51-ce86-49f9-8e8f-ed9172adf60e'))}/items",
+                                                                    "authentication": "@parameters('$authentication')"
+                                                                }
+                                                            },
+                                                            "Get_attachments_3": {
+                                                                "runAfter": {
+                                                                    "Create_item_for_NonCN_KOL_Event": [
+                                                                        "Succeeded"
+                                                                    ]
+                                                                },
+                                                                "metadata": {
+                                                                    "operationMetadataId": "11db25be-a9ae-469f-b2b1-6cb9ab8c5b31",
+                                                                    "flowSystemMetadata": {
+                                                                        "swaggerOperationId": "GetItemAttachments"
+                                                                    }
+                                                                },
+                                                                "type": "ApiConnection",
+                                                                "inputs": {
+                                                                    "host": {
+                                                                        "connection": {
+                                                                            "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                                        }
+                                                                    },
+                                                                    "method": "get",
+                                                                    "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/items/@{encodeURIComponent(encodeURIComponent(body('get_event_detail')?['ID']))}/attachments",
+                                                                    "authentication": "@parameters('$authentication')"
+                                                                }
+                                                            },
+                                                            "Apply_to_each_3": {
+                                                                "foreach": "@body('Get_attachments_3')",
+                                                                "actions": {
+                                                                    "Get_attachment_content_3": {
+                                                                        "runAfter": {},
+                                                                        "metadata": {
+                                                                            "operationMetadataId": "12d32cc0-8066-4d5f-aca5-262180caf727",
+                                                                            "flowSystemMetadata": {
+                                                                                "swaggerOperationId": "GetAttachmentContent"
+                                                                            }
+                                                                        },
+                                                                        "type": "ApiConnection",
+                                                                        "inputs": {
+                                                                            "host": {
+                                                                                "connection": {
+                                                                                    "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                                                }
+                                                                            },
+                                                                            "method": "get",
+                                                                            "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/items/@{encodeURIComponent(encodeURIComponent(body('get_event_detail')?['ID']))}/attachments/@{encodeURIComponent(items('Apply_to_each_3')?['Id'])}/$value",
+                                                                            "authentication": "@parameters('$authentication')"
+                                                                        }
+                                                                    },
+                                                                    "Add_attachment_2": {
+                                                                        "runAfter": {
+                                                                            "Get_attachment_content_3": [
+                                                                                "Succeeded"
+                                                                            ]
+                                                                        },
+                                                                        "metadata": {
+                                                                            "operationMetadataId": "96cdb961-942a-43fc-87fd-288a484e0387",
+                                                                            "flowSystemMetadata": {
+                                                                                "swaggerOperationId": "CreateAttachment"
+                                                                            }
+                                                                        },
+                                                                        "type": "ApiConnection",
+                                                                        "inputs": {
+                                                                            "host": {
+                                                                                "connection": {
+                                                                                    "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                                                }
+                                                                            },
+                                                                            "method": "post",
+                                                                            "body": "@body('Get_attachment_content_3')?['$content']",
+                                                                            "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('0d0b6a51-ce86-49f9-8e8f-ed9172adf60e'))}/items/@{encodeURIComponent(encodeURIComponent(body('Create_item_for_NonCN_KOL_Event')?['ID']))}/attachments",
+                                                                            "queries": {
+                                                                                "displayName": "@items('Apply_to_each_3')?['DisplayName']"
+                                                                            },
+                                                                            "authentication": "@parameters('$authentication')"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "runAfter": {
+                                                                    "Get_attachments_3": [
+                                                                        "Succeeded"
+                                                                    ]
+                                                                },
+                                                                "metadata": {
+                                                                    "operationMetadataId": "3db7bebe-6322-4f7f-b328-280274c48d56"
+                                                                },
+                                                                "type": "Foreach"
+                                                            }
+                                                        },
+                                                        "runAfter": {
+                                                            "Start_and_wait_for_an_approval_multiple_NonCN": [
+                                                                "Succeeded"
+                                                            ]
+                                                        },
+                                                        "else": {
+                                                            "actions": {
+                                                                "set_appl_reject_-_final": {
+                                                                    "runAfter": {},
+                                                                    "metadata": {
+                                                                        "operationMetadataId": "77cc403e-5bb0-4768-a6a1-50c734d7382f",
+                                                                        "flowSystemMetadata": {
+                                                                            "swaggerOperationId": "PatchItem"
+                                                                        }
+                                                                    },
+                                                                    "type": "ApiConnection",
+                                                                    "inputs": {
+                                                                        "host": {
+                                                                            "connection": {
+                                                                                "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                                            }
+                                                                        },
+                                                                        "method": "patch",
+                                                                        "body": {
+                                                                            "Title": "@body('get_event_detail')['Title']",
+                                                                            "field_5": "@body('get_event_detail')['field_5']",
+                                                                            "Currency": "@body('get_event_detail')['Currency']",
+                                                                            "field_7": "Rejected"
+                                                                        },
+                                                                        "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/items/@{encodeURIComponent(body('get_event_detail')?['ID'])}",
+                                                                        "authentication": "@parameters('$authentication')"
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "expression": {
+                                                            "equals": [
+                                                                "",
+                                                                "Approve"
+                                                            ]
+                                                        },
+                                                        "metadata": {
+                                                            "operationMetadataId": "83952d93-2e22-4d2a-aed8-1ba081075cc0"
+                                                        },
+                                                        "type": "If"
+                                                    }
+                                                },
+                                                "runAfter": {},
+                                                "metadata": {
+                                                    "operationMetadataId": "b756d615-f10a-42fb-91bb-c229db67018f"
+                                                },
+                                                "type": "Foreach"
+                                            }
+                                        },
+                                        "runAfter": {
+                                            "manager_approval_for_NonCN": [
+                                                "Succeeded"
+                                            ]
+                                        },
+                                        "else": {
+                                            "actions": {
+                                                "Update_item": {
+                                                    "runAfter": {},
+                                                    "metadata": {
+                                                        "operationMetadataId": "53477793-b1aa-4e00-9c24-b3464bb076bd",
+                                                        "flowSystemMetadata": {
+                                                            "swaggerOperationId": "PatchItem"
+                                                        }
+                                                    },
+                                                    "type": "ApiConnection",
+                                                    "inputs": {
+                                                        "host": {
+                                                            "connection": {
+                                                                "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                                                            }
+                                                        },
+                                                        "method": "patch",
+                                                        "body": {
+                                                            "Title": "@body('get_event_detail')['Title']",
+                                                            "field_5": "@body('get_event_detail')['field_5']",
+                                                            "Currency": "@body('get_event_detail')['Currency']",
+                                                            "field_7": "Rejected by manager"
+                                                        },
+                                                        "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/items/@{encodeURIComponent(body('get_event_detail')?['ID'])}",
+                                                        "authentication": "@parameters('$authentication')"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "expression": {
+                                            "equals": [
+                                                "@body('manager_approval_for_NonCN')?['outcome']",
+                                                "Approve"
+                                            ]
+                                        },
+                                        "metadata": {
+                                            "operationMetadataId": "0116400b-a2f9-459d-80d4-bd555a20e723"
+                                        },
+                                        "type": "If"
+                                    }
+                                },
+                                "runAfter": {},
+                                "metadata": {
+                                    "operationMetadataId": "a8e89548-ae27-4254-b4d7-990e52cd7472"
+                                },
+                                "type": "Foreach"
+                            }
+                        },
+                        "runAfter": {
+                            "Apply_to_None_cn_kol_cost": [
+                                "Succeeded"
+                            ]
+                        },
+                        "metadata": {
+                            "operationMetadataId": "9df7e187-9948-4fe8-9b36-8ef0ef4e3582"
+                        },
+                        "type": "Foreach"
+                    }
+                }
+            },
+            "expression": {
+                "equals": [
+                    "@body('Get_kol_info')?['field_2']",
+                    "中国大陆"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "fb5540a7-023a-44f9-9d4b-e7634c46065e"
+            },
+            "type": "If"
+        },
+        "Get_attachments": {
+            "runAfter": {
+                "initCostValidate_result": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "e9ef0c49-bb15-4af2-987a-486ab21733e6",
+                "flowSystemMetadata": {
+                    "swaggerOperationId": "GetItemAttachments"
+                }
+            },
+            "type": "ApiConnection",
+            "inputs": {
+                "host": {
+                    "connection": {
+                        "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                    }
+                },
+                "method": "get",
+                "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/items/@{encodeURIComponent(encodeURIComponent(body('get_event_detail')?['ID']))}/attachments",
+                "authentication": "@parameters('$authentication')"
+            }
+        },
+        "Initialize_variable": {
+            "runAfter": {
+                "get_event_detail": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "f8fc1e3c-f03b-456b-abb7-16e8d4249f49"
+            },
+            "type": "InitializeVariable",
+            "inputs": {
+                "variables": [
+                    {
+                        "name": "attach",
+                        "type": "array",
+                        "value": []
+                    }
+                ]
+            }
+        },
+        "initCostValidate_result": {
+            "runAfter": {
+                "Initialize_variable": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "80833a1d-bb67-49bc-845a-8aad971a6b6e"
+            },
+            "type": "InitializeVariable",
+            "inputs": {
+                "variables": [
+                    {
+                        "name": "costValidate",
+                        "type": "string",
+                        "value": "Cost is within the expense limit"
+                    }
+                ]
+            }
+        },
+        "Apply_to_each_attchments": {
+            "foreach": "@body('Get_attachments')",
+            "actions": {
+                "Append_to_array_variable": {
+                    "runAfter": {
+                        "Get_attachment_content": [
+                            "Succeeded"
+                        ]
+                    },
+                    "metadata": {
+                        "operationMetadataId": "9864ec75-aaf2-4917-86a1-0c9b87b96d53"
+                    },
+                    "type": "AppendToArrayVariable",
+                    "inputs": {
+                        "name": "attach",
+                        "value": {
+                            "Name": "@{items('Apply_to_each_attchments')?['DisplayName']}",
+                            "Content": "@body('Get_attachment_content')?['$content']"
+                        }
+                    }
+                },
+                "Get_attachment_content": {
+                    "runAfter": {},
+                    "metadata": {
+                        "operationMetadataId": "9ae89919-4a7c-4485-b0da-35d0a3ca6fe1",
+                        "flowSystemMetadata": {
+                            "swaggerOperationId": "GetAttachmentContent"
+                        }
+                    },
+                    "type": "ApiConnection",
+                    "inputs": {
+                        "host": {
+                            "connection": {
+                                "name": "@parameters('$connections')['shared_sharepointonline']['connectionId']"
+                            }
+                        },
+                        "method": "get",
+                        "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://biomerieux.sharepoint.com/sites/CN-KOL_Application-China'))}/tables/@{encodeURIComponent(encodeURIComponent('1b1efd99-b28d-4824-9f8c-ef562c8f8e4e'))}/items/@{encodeURIComponent(encodeURIComponent(body('get_event_detail')?['ID']))}/attachments/@{encodeURIComponent(items('Apply_to_each_attchments')?['Id'])}/$value",
+                        "authentication": "@parameters('$authentication')"
+                    }
+                }
+            },
+            "runAfter": {
+                "Get_attachments": [
+                    "Succeeded"
+                ]
+            },
+            "metadata": {
+                "operationMetadataId": "54404904-1290-4565-bf5b-7f8bfa9e18eb"
+            },
+            "type": "Foreach"
+        }
+    },
+    "description": "after new KOL event item created，get KOL rank from kol list and get kol cost from kol-fee"
+}
