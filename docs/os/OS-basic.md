@@ -10,6 +10,8 @@ useful commands
 
 ## common linux
 
+#linuxommand
+
 - 获取指定文件夹下的文件名和文件内容的 md5 值
   可以使用 `find` 命令和 `md5sum` 命令来获取指定文件夹下的文件名和文件内容的 md5 值。具体步骤如下：
 
